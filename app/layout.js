@@ -1,53 +1,46 @@
 // app/layout.js
 import {
-  ClerkProvider,
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} 
-
-from "@clerk/nextjs";
-import { Geist, Geist_Mono } from "next/font/google";
+  ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton,
+} from "@clerk/nextjs";
+import Image from "next/image";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata = {
-  title: "Alpha Phi Help",
-  description: "Sorority Q&A bot",
-};
 
 export default function RootLayout({ children }) {
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          {/* Header with auth */}
-          <header className="flex justify-end items-center gap-3 p-4 border-b">
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="bg-purple-600 text-white rounded px-3 py-2">Sign In</button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="bg-green-600 text-white rounded px-3 py-2">Sign Up</button>
-              </SignUpButton>
-            </SignedOut>
-            <SignedIn>
-              <UserButton afterSignOutUrl="/" />
-            </SignedIn>
+        <body className="antialiased bg-gradient-to-b from-rose-50 to-pink-100 min-h-screen">
+          {/* Global header */}
+          <header className="sticky top-0 z-50 bg-white border-b">
+            <div className="mx-auto max-w-5xl flex items-center gap-3 p-3">
+              {/* LEFT: logo + title */}
+              <div className="flex items-center gap-3">
+                <Image
+                  src="/alphaphi.png"     // or /aphi.svg
+                  alt="Alpha Phi"
+                  width={100}               // <-- bigger logo
+                  height={100}
+                  priority
+                  unoptimized   // avoids the optimizer decoding step
+                />
+              </div>
+
+              {/* RIGHT: auth */}
+              <div className="ml-auto flex items-center gap-2">
+                <SignedOut>
+                  <SignInButton mode="modal">
+                    <button className="px-3 py-2 rounded bg-black text-white">Sign In</button>
+                  </SignInButton>
+                </SignedOut>
+                <SignedIn>
+                  <UserButton afterSignOutUrl="/" />
+                </SignedIn>
+              </div>
+            </div>
           </header>
 
-          {children}
+          {/* Page content */}
+          <div className="mx-auto max-w-5xl p-6">{children}</div>
         </body>
       </html>
     </ClerkProvider>
