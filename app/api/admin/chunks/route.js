@@ -1,3 +1,4 @@
+// app/api/admin/chunks/route.js
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -6,14 +7,18 @@ function isEmailAdmin(email) {
     .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
   return list.includes((email || "").toLowerCase());
 }
+
 async function requireAdmin() {
   const { userId } = await auth();
   if (!userId) throw new Response("Unauthorized", { status: 401 });
   const user = await currentUser();
   const email = user?.primaryEmailAddress?.emailAddress;
   const role = user?.publicMetadata?.role;
-  if (!(role === "admin" || isEmailAdmin(email))) throw new Response("Forbidden", { status: 403 });
+  if (!(role === "admin" || isEmailAdmin(email))) {
+    throw new Response("Forbidden", { status: 403 });
+  }
 }
+
 function supa() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -22,7 +27,6 @@ function supa() {
   );
 }
 
-/** GET: list with search + pagination */
 export async function GET(req) {
   try {
     await requireAdmin();
@@ -37,7 +41,10 @@ export async function GET(req) {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (q) query = query.or(`content.ilike.%${q}%,source.ilike.%${q}%`);
+    if (q) {
+      // search on content OR source (case-insensitive)
+      query = query.or(`content.ilike.%${q}%,source.ilike.%${q}%`);
+    }
 
     const { data, count, error } = await query;
     if (error) return Response.json({ error: error.message }, { status: 500 });
@@ -48,44 +55,58 @@ export async function GET(req) {
   }
 }
 
-/** POST: create with default source + Voyage embedding */
 export async function POST(req) {
   try {
-    await requireAdmin();
-    const { content, url = null } = await req.json(); // <— no source from client
-    if (!content?.trim()) return Response.json({ error: "No content" }, { status: 400 });
+    const { question } = await req.json();
+    if (!question?.trim()) {
+      return Response.json({ error: "No question provided" }, { status: 400 });
+    }
 
-    // embed with Voyage
-    const model = process.env.EMBED_MODEL || "voyage-3.5-lite";
+    // 1. Get embedding for the question
     const vRes = await fetch("https://api.voyageai.com/v1/embeddings", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.VOYAGE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, input: content, input_type: "document" }),
+      body: JSON.stringify({
+        model: "voyage-3.5-lite",
+        input: question,
+        input_type: "query",
+      }),
     });
-    if (!vRes.ok) return Response.json({ error: await vRes.text() }, { status: vRes.status });
+
+    if (!vRes.ok) {
+      return Response.json({ error: await vRes.text() }, { status: vRes.status });
+    }
+
     const v = await vRes.json();
-    const vector = v?.data?.[0]?.embedding;
+    const queryEmbedding = v.data[0].embedding;
 
-    const defaultSource = process.env.DEFAULT_SOURCE || "General"; // <— your default label
-    const { data, error } = await supa()
-      .from("chunks")
-      .insert({
-        content,
-        url,
-        source: defaultSource,
-        embedding_voyage: vector,
-        updated_at: new Date().toISOString(),
-      })
-      .select("id")
-      .single();
+    // 2. Call your Postgres function match_chunks_voyage
+    const { data, error } = await supa().rpc("match_chunks_voyage", {
+      query_embedding: queryEmbedding,
+      match_threshold: 0.75,   // you can tweak this
+      match_count: 5,
+    });
 
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ ok: true, id: data.id });
+    if (error) {
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data || data.length === 0) {
+      return Response.json({ answer: "I couldn’t find that in our notes yet." });
+    }
+
+    // 3. Return the best match (first row)
+    const best = data[0];
+    return Response.json({
+      answer: best.content,
+      source: best.source,
+      url: best.url,
+      similarity: best.similarity,
+    });
   } catch (e) {
-    if (e instanceof Response) return e;
     return Response.json({ error: e.message }, { status: 500 });
   }
 }
