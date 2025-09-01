@@ -1,0 +1,80 @@
+{
+  "node": {
+    "7f79d824ee39a7d4b57fd03d862595f71358767442": {
+      "workers": {
+        "app/admin/page": {
+          "moduleId": "[project]/.next-internal/server/app/admin/page/actions.js { ACTIONS_MODULE0 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "createOrReadKeylessAction",
+          "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js"
+        }
+      },
+      "layer": {
+        "app/admin/page": "action-browser"
+      },
+      "exportedName": "createOrReadKeylessAction",
+      "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js"
+    },
+    "7f9c7cd34cbcf4d90debb93125de87d259b3ba323e": {
+      "workers": {
+        "app/admin/page": {
+          "moduleId": "[project]/.next-internal/server/app/admin/page/actions.js { ACTIONS_MODULE0 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "deleteKeylessAction",
+          "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js"
+        }
+      },
+      "layer": {
+        "app/admin/page": "action-browser"
+      },
+      "exportedName": "deleteKeylessAction",
+      "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js"
+    },
+    "7fa5ded2b067acf661b86af9f4ac15da5d8ba3b0c9": {
+      "workers": {
+        "app/admin/page": {
+          "moduleId": "[project]/.next-internal/server/app/admin/page/actions.js { ACTIONS_MODULE0 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "detectKeylessEnvDriftAction",
+          "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js"
+        }
+      },
+      "layer": {
+        "app/admin/page": "action-browser"
+      },
+      "exportedName": "detectKeylessEnvDriftAction",
+      "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js"
+    },
+    "7facd8518ef1b55ca972c501721ddd87ed692a8e59": {
+      "workers": {
+        "app/admin/page": {
+          "moduleId": "[project]/.next-internal/server/app/admin/page/actions.js { ACTIONS_MODULE0 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "syncKeylessConfigAction",
+          "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js"
+        }
+      },
+      "layer": {
+        "app/admin/page": "action-browser"
+      },
+      "exportedName": "syncKeylessConfigAction",
+      "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js"
+    },
+    "7f057ba53b76ae452bbfdab6da9fb73cfd272479c1": {
+      "workers": {
+        "app/admin/page": {
+          "moduleId": "[project]/.next-internal/server/app/admin/page/actions.js { ACTIONS_MODULE0 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "invalidateCacheAction",
+          "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js"
+        }
+      },
+      "layer": {
+        "app/admin/page": "action-browser"
+      },
+      "exportedName": "invalidateCacheAction",
+      "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js"
+    }
+  },
+  "edge": {}
+}

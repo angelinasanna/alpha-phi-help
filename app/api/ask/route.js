@@ -1,60 +1,112 @@
-import OpenAI from "openai";
+// app/api/ask/route.js
 import { createClient } from "@supabase/supabase-js";
+import Groq from "groq-sdk";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req) {
   try {
     const { question } = await req.json();
-    if (!question?.trim()) return Response.json({ error: "No question" }, { status: 400 });
+    if (!question?.trim()) {
+      return Response.json({ error: "No question provided." }, { status: 400 });
+    }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const embedModel = process.env.EMBED_MODEL || "text-embedding-3-small";
-    const chatModel  = process.env.CHAT_MODEL  || "gpt-4o-mini";
+    // 1) Embed the question with Voyage
+    const modelEmb = process.env.EMBED_MODEL || "voyage-3.5-lite";
+    const vRes = await fetch("https://api.voyageai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.VOYAGE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: modelEmb,
+        input: question,
+        input_type: "query",
+      }),
+    });
+    if (!vRes.ok) {
+      const txt = await vRes.text();
+      return Response.json({ error: `Voyage error: ${vRes.status} ${txt}` }, { status: 500 });
+    }
+    const vJson = await vRes.json();
+    const queryVec = vJson?.data?.[0]?.embedding;
 
-    // 1) Embed the question
-    const qEmb = await openai.embeddings.create({ model: embedModel, input: question });
-    const vector = qEmb.data[0].embedding;
-
-    // 2) Find relevant admin-added entries
+    // 2) Retrieve top matches from Supabase (voyage column)
     const supa = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE,
       { auth: { persistSession: false } }
     );
 
-    const { data: matches, error } = await supa.rpc("match_chunks", {
-      query_embedding: vector,
+    const { data: matches, error } = await supa.rpc("match_chunks_voyage", {
+      query_embedding: queryVec,
       match_threshold: 0.0,
       match_count: 5,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("DB search failed: " + error.message);
 
     const context = (matches || [])
       .map((m, i) => `[#${i + 1} ${m.source || "source"}] ${m.content}`)
       .join("\n---\n");
 
-    // 3) Answer with citations
-    const system = `You are an Alpha Phi helper. Use ONLY the provided context.
-- If unsure or no context fits, say you aren't sure and suggest asking a director.
-- Keep answers short. Cite chunks with [#1], [#2], etc.`;
+    if (!context) {
+      return Response.json({
+        answer:
+          "I couldn’t find that in our notes yet. Try rephrasing or ask an officer to add it on /admin.",
+        sources: [],
+      });
+    }
 
-    const resp = await openai.chat.completions.create({
-      model: chatModel,
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: `Question: ${question}\n\nContext:\n${context}` },
-      ],
-    });
+    // 3) Chat with Groq (Llama)
+    const messages = [
+      { role: "system", content: `You are an Alpha Phi helper.
+Use ONLY the provided Context. If something is missing, say you're not sure and suggest asking an officer.
+Keep answers short and cite chunks like [#1], [#2].` },
+      { role: "user", content: `Question: ${question}\n\nContext:\n${context}` },
+    ];
 
-    const answer = resp.choices?.[0]?.message?.content ?? "Sorry, I’m not sure.";
-    return Response.json({
-      answer,
-      sources: (matches || []).map((m, i) => ({ n: i + 1, source: m.source, url: m.url }))
-    });
+    let answer = "Sorry, not sure.";
+    const provider = process.env.CHAT_PROVIDER || "groq";
+
+    if (provider === "groq") {
+      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+      const modelChat = process.env.CHAT_MODEL || "llama-3.1-8b-instant";
+      const resp = await groq.chat.completions.create({
+        model: modelChat,
+        messages,
+        temperature: 0.2,
+        max_tokens: 350,
+      });
+      answer = resp.choices?.[0]?.message?.content ?? answer;
+    } else {
+      // (optional) fallback to OpenAI if you keep it configured
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const modelChat = process.env.CHAT_MODEL || "gpt-4o-mini";
+      const resp = await openai.chat.completions.create({
+        model: modelChat,
+        messages,
+        temperature: 0.2,
+        max_tokens: 350,
+      });
+      answer = resp.choices?.[0]?.message?.content ?? answer;
+    }
+
+    const sources = (matches || []).map((m, i) => ({
+      n: i + 1, source: m.source, url: m.url
+    }));
+
+    return Response.json({ answer, sources });
   } catch (err) {
-    console.error(err);
-    return Response.json({ error: err.message }, { status: 500 });
+    const status = err?.status || err?.response?.status || 500;
+    const msg = err?.message || "Server error";
+    if (status === 429 || /quota/i.test(msg)) {
+      return Response.json(
+        { error: "Model quota reached—try again later or contact an officer." },
+        { status: 429 }
+      );
+    }
+    return Response.json({ error: msg }, { status });
   }
 }

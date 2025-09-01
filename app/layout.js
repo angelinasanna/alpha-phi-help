@@ -8,8 +8,11 @@ import "./globals.css";
 export default function RootLayout({ children }) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body className="antialiased bg-gradient-to-b from-rose-50 to-pink-100 min-h-screen">
+      <html lang="en" suppressHydrationWarning>
+        <body
+          className="antialiased bg-gradient-to-b from-rose-50 to-pink-100 min-h-screen"
+          suppressHydrationWarning
+        >
           {/* Global header */}
           <header className="sticky top-0 z-50 bg-white border-b">
             <div className="mx-auto max-w-5xl flex items-center gap-3 p-3">

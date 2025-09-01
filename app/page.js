@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Lora } from "next/font/google";
 const titleFont = Lora({ subsets: ["latin"], weight: ["700"] });
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import Link from "next/link";
 
 export default function Home() {
   const [q, setQ] = useState("");
@@ -10,6 +12,7 @@ export default function Home() {
   const [sources, setSources] = useState([]);   // (1) NEW: sources state
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const isAdmin = useIsAdmin(); 
 
   async function ask() {
     setErr(""); setA(""); setSources([]);       // clear old stuff
@@ -95,7 +98,16 @@ export default function Home() {
           )}
         </div>
       )}
+    {isAdmin && (
+        <div className="fixed bottom-6 right-6">
+          <Link href="/admin">
+            <button className="px-4 py-2 rounded bg-[#7a1f3d] text-white shadow-lg hover:opacity-90">
+              Manage Info
+            </button>
+          </Link>
+        </div>
+      )}
     </main>
-  );
+    );
 }
 

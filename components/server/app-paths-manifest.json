@@ -1,0 +1,7 @@
+{
+  "/admin/page": "app/admin/page.js",
+  "/api/admin/chunks/[id]/route": "app/api/admin/chunks/[id]/route.js",
+  "/api/admin/chunks/route": "app/api/admin/chunks/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/page": "app/page.js"
+}

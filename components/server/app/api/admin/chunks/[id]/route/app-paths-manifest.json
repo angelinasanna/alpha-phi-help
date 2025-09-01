@@ -1,0 +1,3 @@
+{
+  "/api/admin/chunks/[id]/route": "app/api/admin/chunks/[id]/route.js"
+}

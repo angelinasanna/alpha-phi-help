@@ -1,0 +1,12 @@
+var R=require("../../../../chunks/[turbopack]_runtime.js")("server/app/api/admin/add-chunk/route.js")
+R.c("server/chunks/node_modules_6c2a2486._.js")
+R.c("server/chunks/node_modules_next_630eaae2._.js")
+R.c("server/chunks/node_modules_@clerk_backend_dist_7a143cb4._.js")
+R.c("server/chunks/node_modules_@clerk_nextjs_dist_esm_87d9d147._.js")
+R.c("server/chunks/node_modules_tr46_3e4df63f._.js")
+R.c("server/chunks/node_modules_@supabase_auth-js_dist_module_0e404d3a._.js")
+R.c("server/chunks/node_modules_bfa40e2a._.js")
+R.c("server/chunks/[root-of-the-server]__f4c13a49._.js")
+R.m("[project]/.next-internal/server/app/api/admin/add-chunk/route/actions.js [app-rsc] (server actions loader, ecmascript)")
+R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/app/api/admin/add-chunk/route.js [app-route] (ecmascript)\" } [app-route] (ecmascript)")
+module.exports=R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/app/api/admin/add-chunk/route.js [app-route] (ecmascript)\" } [app-route] (ecmascript)").exports
