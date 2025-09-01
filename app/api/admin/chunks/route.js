@@ -27,22 +27,27 @@ function supa() {
   );
 }
 
-async function embedWithVoyage(text, type = "document") {
+async function embedWithVoyage(text, type = "query") {
+  const key = (process.env.VOYAGE_API_KEY || "").trim(); // <-- trim whitespace
+
   const model = process.env.EMBED_MODEL || "voyage-3.5-lite";
   const res = await fetch("https://api.voyageai.com/v1/embeddings", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.VOYAGE_API_KEY}`,
+      Authorization: `Bearer ${key}`,       // correct format
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ model, input: text, input_type: type }),
   });
+
   if (!res.ok) {
     const t = await res.text();
+    console.error("Voyage error:", res.status, t); // log exact error in server logs
     throw new Error(`Voyage embed error ${res.status}: ${t}`);
   }
+
   const data = await res.json();
-  return data?.data?.[0]?.embedding;
+  return data?.data?.[0]?.embedding ?? null;
 }
 
 // ⬇︎ NEW: Save content (no question required)
