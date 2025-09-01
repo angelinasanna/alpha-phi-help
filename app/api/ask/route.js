@@ -1,6 +1,10 @@
 // app/api/ask/route.js
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = 'nodejs';
+export const revalidate = 0;
+export const dynamic = 'force-dynamic';
+
 function supa() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
