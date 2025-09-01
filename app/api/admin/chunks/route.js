@@ -27,81 +27,53 @@ function supa() {
   );
 }
 
-export async function GET(req) {
-  try {
-    await requireAdmin();
-    const { searchParams } = new URL(req.url);
-    const q = (searchParams.get("q") || "").trim();
-    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 100);
-    const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10), 0);
-
-    let query = supa()
-      .from("chunks")
-      .select("id, content, source, url, created_at, updated_at", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (q) {
-      // search on content OR source (case-insensitive)
-      query = query.or(`content.ilike.%${q}%,source.ilike.%${q}%`);
-    }
-
-    const { data, count, error } = await query;
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ items: data || [], total: count || 0 });
-  } catch (e) {
-    if (e instanceof Response) return e;
-    return Response.json({ error: e.message }, { status: 500 });
+async function embedWithVoyage(text, type = "document") {
+  const model = process.env.EMBED_MODEL || "voyage-3.5-lite";
+  const res = await fetch("https://api.voyageai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.VOYAGE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model, input: text, input_type: type }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Voyage embed error ${res.status}: ${t}`);
   }
+  const data = await res.json();
+  return data?.data?.[0]?.embedding;
 }
 
+// ⬇︎ NEW: Save content (no question required)
 export async function POST(req) {
   try {
-    // 1. Get embedding for the question
-    const vRes = await fetch("https://api.voyageai.com/v1/embeddings", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.VOYAGE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "voyage-3.5-lite",
-        input: question,
-        input_type: "query",
-      }),
-    });
+    await requireAdmin();
 
-    if (!vRes.ok) {
-      return Response.json({ error: await vRes.text() }, { status: vRes.status });
+    const { content, url, source } = await req.json();
+
+    // Allow saving plain info; just ensure there is some content
+    if (!content || !content.trim()) {
+      return Response.json({ error: "No content provided" }, { status: 400 });
     }
 
-    const v = await vRes.json();
-    const queryEmbedding = v.data[0].embedding;
+    // Create an embedding so entries are retrievable later
+    const embedding = await embedWithVoyage(content, "document");
 
-    // 2. Call your Postgres function match_chunks_voyage
-    const { data, error } = await supa().rpc("match_chunks_voyage", {
-      query_embedding: queryEmbedding,
-      match_threshold: 0.75,   // you can tweak this
-      match_count: 5,
-    });
+    // Insert into your 'chunks' table (assumes columns: content, source, url, embedding)
+    const { data, error } = await supa()
+      .from("chunks")
+      .insert([{ content, source: source || "admin", url: url || null, embedding }])
+      .select()
+      .single();
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
     }
 
-    if (!data || data.length === 0) {
-      return Response.json({ answer: "I couldn’t find that in our notes yet." });
-    }
-
-    // 3. Return the best match (first row)
-    const best = data[0];
-    return Response.json({
-      answer: best.content,
-      source: best.source,
-      url: best.url,
-      similarity: best.similarity,
-    });
+    return Response.json({ ok: true, item: data });
   } catch (e) {
+    if (e instanceof Response) return e;
     return Response.json({ error: e.message }, { status: 500 });
   }
 }
