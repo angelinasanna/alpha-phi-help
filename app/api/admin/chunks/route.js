@@ -57,11 +57,6 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const { question } = await req.json();
-    if (!question?.trim()) {
-      return Response.json({ error: "No question provided" }, { status: 400 });
-    }
-
     // 1. Get embedding for the question
     const vRes = await fetch("https://api.voyageai.com/v1/embeddings", {
       method: "POST",
