@@ -55,7 +55,7 @@ export default function AdminAllInOne() {
   async function createEntry() {
     setSaveMsg("");
     if (!content.trim()) {
-      setSaveMsg("Please add some text first.");
+      setSaveMsg("Please add some info first!");
       return;
     }
     setSaving(true);
