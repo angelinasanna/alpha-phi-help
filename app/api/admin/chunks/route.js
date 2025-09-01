@@ -50,22 +50,22 @@ async function embedWithVoyage(text, type = "query") {
   return data?.data?.[0]?.embedding ?? null;
 }
 
-// ⬇︎ NEW: Save content (no question required)
 export async function POST(req) {
   try {
     await requireAdmin();
 
     const { content, url, source } = await req.json();
-
-    // Allow saving plain info; just ensure there is some content
     if (!content || !content.trim()) {
       return Response.json({ error: "No content provided" }, { status: 400 });
     }
 
-    // Create an embedding so entries are retrievable later
-    const embedding = await embedWithVoyage(content, "document");
+    let embedding = null;
+    try {
+      embedding = await embedWithVoyage(content, "document");
+    } catch (err) {
+      console.error("Embedding failed, saving without vector:", err);
+    }
 
-    // Insert into your 'chunks' table (assumes columns: content, source, url, embedding)
     const { data, error } = await supa()
       .from("chunks")
       .insert([{ content, source: source || "admin", url: url || null, embedding }])

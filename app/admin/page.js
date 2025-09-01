@@ -63,7 +63,7 @@ export default function AdminAllInOne() {
       const res = await fetch("/api/admin/chunks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, url: url || null }), // server defaults source
+        body: JSON.stringify({ content, url }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) setSaveMsg(data.error || `Error ${res.status}`);
