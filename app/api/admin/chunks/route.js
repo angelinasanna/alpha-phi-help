@@ -27,27 +27,34 @@ function supa() {
   );
 }
 
-async function embedWithVoyage(text, type = "query") {
-  const key = (process.env.VOYAGE_API_KEY || "").trim(); // <-- trim whitespace
+async function embedWithVoyage(text, type = "document") {
+  const key = (process.env.VOYAGE_API_KEY || "").trim();
+  if (!key) return null;
 
-  const model = process.env.EMBED_MODEL || "voyage-3.5-lite";
-  const res = await fetch("https://api.voyageai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,       // correct format
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model, input: text, input_type: type }),
-  });
+  const model = process.env.EMBED_MODEL?.trim() || "voyage-3.5-lite";
 
-  if (!res.ok) {
-    const t = await res.text();
-    console.error("Voyage error:", res.status, t); // log exact error in server logs
-    throw new Error(`Voyage embed error ${res.status}: ${t}`);
+  try {
+    const res = await fetch("https://api.voyageai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model, input: text, input_type: type }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error("Voyage:", res.status, body);
+      return null; // degrade gracefully
+    }
+
+    const data = await res.json();
+    return data?.data?.[0]?.embedding ?? null;
+  } catch (e) {
+    console.error("Embed error:", e);
+    return null;
   }
-
-  const data = await res.json();
-  return data?.data?.[0]?.embedding ?? null;
 }
 
 export async function POST(req) {
@@ -55,30 +62,71 @@ export async function POST(req) {
     await requireAdmin();
 
     const { content, url, source } = await req.json();
-    if (!content || !content.trim()) {
+    if (!content?.trim()) {
       return Response.json({ error: "No content provided" }, { status: 400 });
     }
 
-    let embedding = null;
-    try {
-      embedding = await embedWithVoyage(content, "document");
-    } catch (err) {
-      console.error("Embedding failed, saving without vector:", err);
-    }
+    const embedding = await embedWithVoyage(content, "document");
+
+    // Build the row without embedding first
+    const row = { content, source: source || "admin", url: url || null };
+    if (embedding) row.embedding = embedding; // only if column exists
 
     const { data, error } = await supa()
       .from("chunks")
-      .insert([{ content, source: source || "admin", url: url || null, embedding }])
+      .insert([row])
       .select()
       .single();
 
     if (error) {
+      console.error("Supabase insert error:", error);
       return Response.json({ error: error.message }, { status: 500 });
     }
 
-    return Response.json({ ok: true, item: data });
+    return Response.json({ ok: true, item: data, embedded: !!embedding });
   } catch (e) {
     if (e instanceof Response) return e;
-    return Response.json({ error: e.message }, { status: 500 });
+    console.error("Save route error:", e);
+    return Response.json({ error: String(e) }, { status: 500 });
   }
 }
+
+export async function GET(req) {
+  try {
+    await requireAdmin();
+    const { searchParams } = new URL(req.url);
+    const q = (searchParams.get("q") || "").trim();
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 100);
+    const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10), 0);
+
+    // First try with created_at (if your table has it)
+    let query = supa()
+      .from("chunks")
+      .select("id, content, source, url, created_at", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (q) query = query.or(`content.ilike.%${q}%,source.ilike.%${q}%`);
+
+    let { data, count, error } = await query;
+
+    // Fallback if the table has no created_at column
+    if (error && /created_at/i.test(error.message)) {
+      let q2 = supa()
+        .from("chunks")
+        .select("id, content, source, url", { count: "exact" })
+        .order("id", { ascending: false })
+        .range(offset, offset + limit - 1);
+      if (q) q2 = q2.or(`content.ilike.%${q}%,source.ilike.%${q}%`);
+      const res2 = await q2;
+      data = res2.data; count = res2.count; error = res2.error;
+    }
+
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ items: data || [], total: count || 0 });
+  } catch (e) {
+    if (e instanceof Response) return e;
+    return Response.json({ error: String(e) }, { status: 500 });
+  }
+}
+

@@ -16,21 +16,20 @@ function supa() {
 // Small helper to call Voyage
 async function embedWithVoyage(text, type = "query") {
   const model = process.env.EMBED_MODEL || "voyage-3.5-lite";
+  const key = (process.env.VOYAGE_API_KEY || "").trim();
+
   const res = await fetch("https://api.voyageai.com/v1/embeddings", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.VOYAGE_API_KEY}`,
+      Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model, input: text, input_type: type }),
+    body: JSON.stringify({
+      model: "voyage-3.5-lite",
+      input: text,
+      input_type: type,
+    }),
   });
-
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Voyage embed error ${res.status}: ${t}`);
-  }
-  const data = await res.json();
-  return data?.data?.[0]?.embedding;
 }
 
 export async function POST(req) {

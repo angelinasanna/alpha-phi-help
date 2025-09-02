@@ -11,7 +11,7 @@ function useIsAdmin() {
   const role = user?.publicMetadata?.role;
   const allowed = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
     .split(",")
-    .map(s => s.trim().toLowerCase())
+    .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
   return role === "admin" || allowed.includes(email);
 }
@@ -36,15 +36,21 @@ export default function AdminAllInOne() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch(
-      `/api/admin/chunks?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`
-    );
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setItems(data.items || []);
-      setTotal(data.total || 0);
+    try {
+      const res = await fetch(
+        `/api/admin/chunks?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`
+      );
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setItems(data.items || []);
+        setTotal(data.total || 0);
+      } else {
+        setItems([]);
+        setTotal(0);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -53,29 +59,42 @@ export default function AdminAllInOne() {
   }, [q, offset]);
 
   async function createEntry() {
+    // 🔧 Clear any stale message first (prevents sticky "Invalid API key"-style text)
     setSaveMsg("");
-    if (!content.trim()) {
+
+    const contentTrimmed = content.trim();
+    const urlTrimmed = url.trim();
+
+    if (!contentTrimmed) {
       setSaveMsg("Please add some info first!");
       return;
     }
+
     setSaving(true);
     try {
       const res = await fetch("/api/admin/chunks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, url }),
+        body: JSON.stringify({ content: contentTrimmed, url: urlTrimmed || null }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) setSaveMsg(data.error || `Error ${res.status}`);
-      else {
-        setSaveMsg("Saved!");
+
+      const out = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // 🔧 Show the real server error when present; otherwise a generic message
+        setSaveMsg(out.error || `Save failed (HTTP ${res.status})`);
+      } else {
+        // 🔧 Prefer server-provided flags to craft success text
+        const successText = out.embedded ? "Saved ✓ (indexed)" : "Saved ✓";
+        setSaveMsg(successText);
         setContent("");
         setUrl("");
         setOffset(0);
-        load();
+        await load();
       }
-    } catch {
+    } catch (e) {
       setSaveMsg("Network error — try again.");
+      console.error(e);
     } finally {
       setSaving(false);
     }
@@ -200,7 +219,7 @@ export default function AdminAllInOne() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={createEntry}
-                  disabled={saving}
+                  disabled={saving || !content.trim()} // 🔧 prevent empty submits
                   className="px-4 py-2 rounded bg-[#7a1f3d] text-white disabled:opacity-60"
                 >
                   {saving ? "Saving…" : "Save"}
@@ -259,7 +278,7 @@ export default function AdminAllInOne() {
           </>
         )}
       </SignedIn>
-    {/* Go back button */}
+      {/* Go back button */}
       <div className="fixed bottom-6 right-6 z-50">
         <Link
           href="/"
